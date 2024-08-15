@@ -71,7 +71,7 @@ void vis_set_key_cb(vis_obj_t, vis_key_fn_t cb);
 void vis_set_mousebtn_cb(vis_obj_t, vis_mousebtn_fn_t cb);
 void vis_set_cursorenter_cb(vis_obj_t, vis_cursorenter_fn_t cb);
 void vis_set_cursorpos_cb(vis_obj_t, vis_cursorpos_fn_t cb);
-void vis_set_overlay_visibility(vis_obj_t, int visible);
+void vis_set_overlay_visibility(vis_obj_t, bool_t visible);
 void vis_set_overlay_text(vis_obj_t, const char* str, int32_t cch); // NOTE: `vis` object does not own string memory, just holds a pointer. so user must keep the lifetime of string memory valid until the frame is rendered.
 int32_t vis_get_cols(vis_obj_t);
 int32_t vis_get_rows(vis_obj_t);

@@ -511,7 +511,7 @@ void vis_set_cursorpos_cb(vis_obj_t self, vis_cursorpos_fn_t cb) {
     self->cb_cursorpos = cb;
 }
 
-void vis_set_overlay_visibility(vis_obj_t self, int visible) {
+void vis_set_overlay_visibility(vis_obj_t self, bool_t visible) {
     assert(self);
     self->fl_render_overlay = visible;
 }
