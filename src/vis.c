@@ -67,7 +67,7 @@ static inline void _vis_deinit_window(vis_obj_t self)
 
 static inline bool_t _vis_init_window(vis_obj_t self, uint32_t dpi)
 {
-    printf("%s() -> dpi %u\n", __func__, dpi);
+    //printf("%s() -> dpi %u\n", __func__, dpi);
     assert(self);
 
     const HWND hwnd = self->hwnd;
@@ -231,12 +231,12 @@ static vis_key_e _vis_translate_vkcode(DWORD vkcode)
     return VIS_KEY_UNKNOWN;
 }
 
-static LRESULT WINAPI _vis_wnd_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+static LRESULT WINAPI _vis_wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     const vis_obj_t self = (vis_obj_t)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
     assert(self);
 
-    switch (uMsg) {
+    switch (msg) {
     case WM_CREATE: {
         if (!_vis_init_window(self, GetDpiForWindow(hwnd))) {
             return -1; // NOTE: If returns –1, the window is destroyed and the `CreateWindowEx` returns a NULL handle.
@@ -253,7 +253,7 @@ static LRESULT WINAPI _vis_wnd_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
         return 0;
     }
     case WM_DPICHANGED: {
-        const uint32_t dpiX = LOWORD(wParam), dpiY = HIWORD(wParam);
+        const uint32_t dpiX = LOWORD(wparam), dpiY = HIWORD(wparam);
         UNUSED_PARAM(dpiY);
         _vis_deinit_window(self);
         _vis_init_window(self, dpiX);
@@ -278,13 +278,13 @@ static LRESULT WINAPI _vis_wnd_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
     case WM_SYSKEYDOWN:
     case WM_SYSKEYUP:
     {
-        const WORD vkcode = LOWORD(wParam); // vk code
-        const WORD key_flags = HIWORD(lParam); // key flags
+        const WORD vkcode = LOWORD(wparam); // vk code
+        const WORD key_flags = HIWORD(lparam); // key flags
         const BOOL is_ext_key = (key_flags & KF_EXTENDED) == KF_EXTENDED; // extended-key flag, 1 if scancode has 0xE0 prefix
         const BOOL is_key_released = (key_flags & KF_UP) == KF_UP; // transition-state flag, 1 on keyup
         const WORD scan_code = MAKEWORD(LOBYTE(key_flags), (is_ext_key) ? 0xE0 : 0x00); // scan code
         const BOOL was_key_down = (key_flags & KF_REPEAT) == KF_REPEAT; // previous key-state flag, 1 on autorepeat
-        const WORD repeat_count = LOWORD(lParam); // repeat count, > 0 if several keydown messages was combined into one message
+        const WORD repeat_count = LOWORD(lparam); // repeat count, > 0 if several keydown messages was combined into one message
 
         vis_key_e key = _vis_translate_vkcode(vkcode);
         if (key != VIS_KEY_UNKNOWN) {
@@ -311,11 +311,11 @@ static LRESULT WINAPI _vis_wnd_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
     case WM_RBUTTONDOWN:
     case WM_RBUTTONUP:
     {
-        vis_mousebtn_e btn = (uMsg == WM_LBUTTONDOWN || uMsg == WM_LBUTTONUP) ? VIS_MOUSEBTN_L : VIS_MOUSEBTN_R;
-        vis_action_e action = (uMsg == WM_LBUTTONDOWN || uMsg == WM_RBUTTONDOWN) ? VIS_ACTION_PRESS : VIS_ACTION_RELEASE;
+        vis_mousebtn_e btn = (msg == WM_LBUTTONDOWN || msg == WM_LBUTTONUP) ? VIS_MOUSEBTN_L : VIS_MOUSEBTN_R;
+        vis_action_e action = (msg == WM_LBUTTONDOWN || msg == WM_RBUTTONDOWN) ? VIS_ACTION_PRESS : VIS_ACTION_RELEASE;
         vis_modkey_e mods = 0;
-        if (wParam & MK_CONTROL) { mods |= VIS_MODKEY_CTRL; }
-        if (wParam & MK_SHIFT) { mods |= VIS_MODKEY_SHIFT; }
+        if (wparam & MK_CONTROL) { mods |= VIS_MODKEY_CTRL; }
+        if (wparam & MK_SHIFT) { mods |= VIS_MODKEY_SHIFT; }
 
         SAFE_DISPATCH(self->cb_mousebtn, self,
             btn,
@@ -327,8 +327,8 @@ static LRESULT WINAPI _vis_wnd_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
     }
     case WM_MOUSEMOVE: {
         const int32_t
-            cursur_grid_xpos = ((int32_t)LOWORD(lParam)) / self->scaled_grid_pixel_size,
-            cursur_grid_ypos = ((int32_t)HIWORD(lParam)) / self->scaled_grid_pixel_size;
+            cursur_grid_xpos = ((int32_t)LOWORD(lparam)) / self->scaled_grid_pixel_size,
+            cursur_grid_ypos = ((int32_t)HIWORD(lparam)) / self->scaled_grid_pixel_size;
 
         if (!self->fl_cursor_entered) {
             self->fl_cursor_entered = TRUE;
@@ -358,14 +358,14 @@ static LRESULT WINAPI _vis_wnd_proc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM 
     }
     } // switch
 
-    return DefWindowProcA(hwnd, uMsg, wParam, lParam);
+    return DefWindowProcA(hwnd, msg, wparam, lparam);
 }
 
-static LRESULT WINAPI _vis_wnd_proc_init(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+static LRESULT WINAPI _vis_wnd_proc_init(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
-    if (uMsg == WM_NCCREATE) {
-        assert(lParam);
-        const vis_obj_t self = (vis_obj_t)(((CREATESTRUCT*)lParam)->lpCreateParams);
+    if (msg == WM_NCCREATE) {
+        assert(lparam);
+        const vis_obj_t self = (vis_obj_t)(((CREATESTRUCT*)lparam)->lpCreateParams);
         assert(self);
         SetWindowLongPtrA(hwnd, GWLP_USERDATA, (LONG_PTR)self); // Set thunk
         SetWindowLongPtrA(hwnd, GWLP_WNDPROC, (LONG_PTR)_vis_wnd_proc);
@@ -375,7 +375,7 @@ static LRESULT WINAPI _vis_wnd_proc_init(HWND hwnd, UINT uMsg, WPARAM wParam, LP
     // https://stackoverflow.com/q/42216797
     // NOTE: You should let `DefWindowProcW` function handle the `WM_NCCREATE` message. 
     // If you return `TRUE` as MSDN suggests, an untitled window will be created.
-    return DefWindowProcA(hwnd, uMsg, wParam, lParam);
+    return DefWindowProcA(hwnd, msg, wparam, lparam);
 }
 
 vis_obj_t vis_create(int32_t cols, int32_t rows, const char* title) {
@@ -394,7 +394,8 @@ vis_obj_t vis_create(int32_t cols, int32_t rows, const char* title) {
         return NULL;
     }
 
-    newobj->org_dpi_ctx = SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+    // Note: https://stackoverflow.com/a/39500850
+    newobj->org_dpi_ctx = SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     newobj->fl_dpi_awareness = newobj->org_dpi_ctx != NULL;
 
     char class_name_buff[30];
